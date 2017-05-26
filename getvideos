@@ -1,0 +1,33 @@
+#!/bin/sh
+# get videos from sony DV camera. 
+
+# go to videos directory
+cd /workha/digivideot
+
+# go to the directory. year/month/date
+YEARDIRECTORY=20"`date +%y`"
+if [ ! -d "$YEARDIRECTORY" ]; then
+mkdir 20"`date +%y`"
+fi
+cd 20"`date +%y`"
+mkdir "`date +%m%d`"
+cd "`date +%m%d`"
+
+# find the camera and mount it, copy videos and pictures and unmount it 
+fdisk -l |grep W95 |tail -1|cut -d ' ' -f1|xargs -i mount '{}' /mnt/dvkamera/
+ionice -c3 cp /mnt/dvkamera/PRIVATE/AVCHD/BDMV/CLIPINF/* .
+ionice -c3 cp /mnt/dvkamera/PRIVATE/AVCHD/BDMV/STREAM/* .
+ionice -c3 cp /mnt/dvkamera/DCIM/*/*.JPG .
+umount /mnt/dvkamera
+
+# encode videos to h264
+time nice -n 19 ls -1 *.MTS|cut -d '.' -f1 |xargs -i avconv -i '{}'.MTS -acodec libvo_aacenc -ab 128k -ac 2 -vcodec libx264 -preset medium -crf 22 -threads 0 '{}'.mp4
+
+# autorotate pictures (if there were any), and remove original video files from the disk
+nice -n 19 jhead -autorot *.JPG
+rm *.MTS
+
+# show new files and echo the directory (including samba mount)
+ls /workha/digivideot/20"`date +%y`"/"`date +%m%d`"
+echo /workha/digivideot/20"`date +%y`"/"`date +%m%d`"
+echo "Z:\digivideot\20"`date +%y`\\`date +%m%d`
